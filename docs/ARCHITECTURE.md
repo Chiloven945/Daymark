@@ -127,9 +127,17 @@ EventDetailRoute(eventId)
 EventEditorRoute(eventId?)
 ```
 
-`MainShell` owns the four-tab nested `NavHost` inside
-`NavigationSuiteScaffold`. Detail and editor live in the root `NavHost`, so the adaptive navigation
-suite disappears for full-screen editing.
+`MainShell` owns the four-tab nested `NavHost` inside a custom adaptive shell:
+
+- compact windows use `FloatingNavigationBar` built from Material 3
+  `ShortNavigationBar` inside a translucent, shadowed Surface
+- medium and expanded windows use `FloatingNavigationRail`
+- detail and editor live in the root `NavHost`, so the floating navigation disappears for
+  full-screen editing
+
+Root navigation uses horizontal slide/fade transitions. Predictive back overrides Navigation
+Compose's default `scaleOut(0.7f)` with edge-aware horizontal slide transitions. The nested tab host
+uses a short fade-through transition and never scales.
 
 ## Theme
 
@@ -141,6 +149,8 @@ suite disappears for full-screen editing.
 - day/night fallback schemes
 - custom 4/8/12/20/28 dp shape scale
 - tabular figures for countdown numerals
+- `DaymarkBackground` gradient plus soft primary/tertiary glows
+- `DaymarkSurfaceCard` tonal surface with a subtle outline
 
 Feature code uses `MaterialTheme.colorScheme`, `MaterialTheme.typography`, and
 `MaterialTheme.shapes` only. A future Nothing theme replaces `DaymarkTheme`

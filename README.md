@@ -9,11 +9,13 @@ M0–M5 are implemented:
 
 - Home, Events, Calendar, Settings
 - Event detail and editor
+- Floating Material 3 navigation capsule and adaptive navigation rail
 - Room + DataStore
 - Hilt + MVVM + StateFlow
 - Recurrence-aware date engine
 - AlarmManager reminders and notifications
 - JSON export/import
+- Custom predictive-back slide transitions
 
 Widgets and the Nothing OS theme layer are planned for M6/M7.
 

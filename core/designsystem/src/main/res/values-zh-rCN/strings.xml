@@ -69,6 +69,10 @@
     <string name="ds_tab_events">事件</string>
     <string name="ds_tab_calendar">日历</string>
     <string name="ds_tab_settings">设置</string>
+    <string name="ds_your_days">你的日子</string>
+    <string name="ds_event_count">%1$d 个事件</string>
+    <string name="ds_section_event">事件</string>
+    <string name="ds_section_schedule">时间</string>
     <string name="ds_appearance">外观</string>
     <string name="ds_theme">主题</string>
     <string name="ds_theme_system">跟随系统</string>

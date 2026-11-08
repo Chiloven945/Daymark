@@ -5,17 +5,33 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.ColorLens
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Widgets
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -27,7 +43,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,18 +53,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import top.chiloven.daymark.core.designsystem.R
+import top.chiloven.daymark.core.designsystem.component.DaymarkBackground
+import top.chiloven.daymark.core.designsystem.component.DaymarkSurfaceCard
+import top.chiloven.daymark.core.designsystem.theme.DaymarkSpacing
 import top.chiloven.daymark.core.model.ThemeMode
 import top.chiloven.daymark.core.model.WidgetStyle
 import java.time.DayOfWeek
 import java.time.format.TextStyle
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(
@@ -60,14 +84,17 @@ fun SettingsScreen(
     var showFirstDayDialog by remember { mutableStateOf(false) }
     var showWidgetStyleDialog by remember { mutableStateOf(false) }
     var showClearDialog by remember { mutableStateOf(false) }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        rememberTopAppBarState(),
+    )
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
-    ) { it?.let(viewModel::export) }
+    ) { uri -> uri?.let(viewModel::export) }
 
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
-    ) { it?.let(viewModel::import) }
+    ) { uri -> uri?.let(viewModel::import) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -85,149 +112,127 @@ fun SettingsScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier,
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.ds_settings)) }) },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { innerPadding ->
-        LazyColumn(
+    DaymarkBackground(modifier) {
+        Scaffold(
             modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
-            contentPadding = PaddingValues(vertical = 8.dp),
-        ) {
-            item { SettingsSectionTitle(stringResource(R.string.ds_appearance)) }
-            item {
-                Column(
-                    modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.ds_theme),
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    SingleChoiceSegmentedButtonRow(
-                        modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                    ) {
-                        ThemeMode.entries.forEachIndexed { index, mode ->
-                            SegmentedButton(
-                                selected = settings.themeMode == mode,
-                                onClick = { viewModel.setThemeMode(mode) },
-                                shape = SegmentedButtonDefaults.itemShape(
-                                    index = index,
-                                    count = ThemeMode.entries.size,
-                                ),
-                                label = { Text(mode.label()) },
-                            )
-                        }
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            topBar = {
+                LargeTopAppBar(
+                    title = { Text(stringResource(R.string.ds_settings)) },
+                    scrollBehavior = scrollBehavior,
+                )
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+        ) { innerPadding ->
+            LazyColumn(
+                modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(horizontal = DaymarkSpacing.xl),
+                contentPadding = PaddingValues(
+                    top = DaymarkSpacing.sm,
+                    bottom = 40.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(DaymarkSpacing.xl),
+            ) {
+                item {
+                    SettingsSection(stringResource(R.string.ds_appearance)) {
+                        AppearanceContent(
+                            themeMode = settings.themeMode,
+                            dynamicColor = settings.dynamicColor,
+                            onThemeMode = viewModel::setThemeMode,
+                            onDynamicColor = viewModel::setDynamicColor,
+                        )
                     }
                 }
-            }
-            item {
-                ListItem(
-                    trailingContent = {
-                        Switch(
-                            checked = settings.dynamicColor,
-                            onCheckedChange = viewModel::setDynamicColor,
+
+                item {
+                    SettingsSection(stringResource(R.string.ds_widgets)) {
+                        SettingsRow(
+                            icon = Icons.Outlined.Widgets,
+                            title = stringResource(R.string.ds_default_widget_style),
+                            supporting = settings.defaultWidgetStyle.label(),
+                            onClick = { showWidgetStyleDialog = true },
                         )
-                    },
-                ) {
-                    Text(stringResource(R.string.ds_dynamic_color))
+                    }
                 }
-            }
 
-            item { SettingsSectionTitle(stringResource(R.string.ds_widgets)) }
-            item {
-                ListItem(
-                    supportingContent = { Text(settings.defaultWidgetStyle.label()) },
-                    modifier = Modifier.clickable { showWidgetStyleDialog = true },
-                ) {
-                    Text(stringResource(R.string.ds_default_widget_style))
-                }
-            }
-
-            item { SettingsSectionTitle(stringResource(R.string.ds_calendar_settings)) }
-            item {
-                ListItem(
-                    supportingContent = {
-                        Text(
-                            settings.firstDayOfWeek.getDisplayName(
+                item {
+                    SettingsSection(stringResource(R.string.ds_calendar_settings)) {
+                        SettingsRow(
+                            icon = Icons.Outlined.CalendarMonth,
+                            title = stringResource(R.string.ds_first_day_of_week),
+                            supporting = settings.firstDayOfWeek.getDisplayName(
                                 TextStyle.FULL,
-                                LocalLocale.current.platformLocale,
+                                Locale.getDefault(),
                             ),
+                            onClick = { showFirstDayDialog = true },
                         )
-                    },
-                    modifier = Modifier.clickable { showFirstDayDialog = true },
-                ) {
-                    Text(stringResource(R.string.ds_first_day_of_week))
+                    }
                 }
-            }
 
-            item { SettingsSectionTitle(stringResource(R.string.ds_notifications)) }
-            item {
-                ListItem(
-                    trailingContent = {
-                        Switch(
-                            checked = settings.notificationsEnabled,
-                            onCheckedChange = { enabled ->
-                                val needsPermission = enabled &&
-                                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                        ContextCompat.checkSelfPermission(
-                                            context,
-                                            Manifest.permission.POST_NOTIFICATIONS,
-                                        ) != PackageManager.PERMISSION_GRANTED
-                                if (needsPermission) {
-                                    notificationPermissionLauncher.launch(
-                                        Manifest.permission.POST_NOTIFICATIONS,
-                                    )
-                                } else {
-                                    viewModel.setNotificationsEnabled(enabled)
-                                }
+                item {
+                    SettingsSection(stringResource(R.string.ds_notifications)) {
+                        SettingsRow(
+                            icon = Icons.Outlined.Notifications,
+                            title = stringResource(R.string.ds_enable_notifications),
+                            trailing = {
+                                Switch(
+                                    checked = settings.notificationsEnabled,
+                                    onCheckedChange = { enabled ->
+                                        val needsPermission = enabled &&
+                                                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                                ContextCompat.checkSelfPermission(
+                                                    context,
+                                                    Manifest.permission.POST_NOTIFICATIONS,
+                                                ) != PackageManager.PERMISSION_GRANTED
+                                        if (needsPermission) {
+                                            notificationPermissionLauncher.launch(
+                                                Manifest.permission.POST_NOTIFICATIONS,
+                                            )
+                                        } else {
+                                            viewModel.setNotificationsEnabled(enabled)
+                                        }
+                                    },
+                                )
                             },
                         )
-                    },
-                ) {
-                    Text(stringResource(R.string.ds_enable_notifications))
+                    }
                 }
-            }
 
-            item { SettingsSectionTitle(stringResource(R.string.ds_data)) }
-            item {
-                ListItem(
-                    modifier = Modifier.clickable {
-                        exportLauncher.launch("daymark-backup.json")
-                    },
-                ) {
-                    Text(stringResource(R.string.ds_export_data))
+                item {
+                    SettingsSection(stringResource(R.string.ds_data)) {
+                        SettingsRow(
+                            icon = Icons.Outlined.FileUpload,
+                            title = stringResource(R.string.ds_export_data),
+                            onClick = { exportLauncher.launch("daymark-backup.json") },
+                        )
+                        SettingsRow(
+                            icon = Icons.Outlined.FileDownload,
+                            title = stringResource(R.string.ds_import_data),
+                            onClick = {
+                                importLauncher.launch(arrayOf("application/json", "text/plain"))
+                            },
+                        )
+                        SettingsRow(
+                            icon = Icons.Outlined.Delete,
+                            title = stringResource(R.string.ds_clear_data),
+                            onClick = { showClearDialog = true },
+                        )
+                    }
                 }
-            }
-            item {
-                ListItem(
-                    modifier = Modifier.clickable {
-                        importLauncher.launch(arrayOf("application/json", "text/plain"))
-                    },
-                ) {
-                    Text(stringResource(R.string.ds_import_data))
-                }
-            }
-            item {
-                ListItem(
-                    modifier = Modifier.clickable { showClearDialog = true },
-                ) {
-                    Text(stringResource(R.string.ds_clear_data))
-                }
-            }
 
-            item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
-            item { SettingsSectionTitle(stringResource(R.string.ds_about)) }
-            item {
-                ListItem(
-                    supportingContent = { Text("0.1.0") },
-                ) {
-                    Text(stringResource(R.string.ds_version))
+                item {
+                    SettingsSection(stringResource(R.string.ds_about)) {
+                        SettingsRow(
+                            icon = Icons.Outlined.Info,
+                            title = stringResource(R.string.ds_version),
+                            supporting = "0.1.0",
+                        )
+                    }
                 }
             }
         }
@@ -238,7 +243,7 @@ fun SettingsScreen(
             title = stringResource(R.string.ds_first_day_of_week),
             options = DayOfWeek.entries,
             selected = settings.firstDayOfWeek,
-            label = { it.getDisplayName(TextStyle.FULL, LocalLocale.current.platformLocale) },
+            label = { it.getDisplayName(TextStyle.FULL, Locale.getDefault()) },
             onSelect = {
                 viewModel.setFirstDayOfWeek(it)
                 showFirstDayDialog = false
@@ -286,13 +291,121 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsSectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-    )
+private fun SettingsSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(DaymarkSpacing.sm)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp),
+        )
+        DaymarkSurfaceCard(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 4.dp),
+            content = content,
+        )
+    }
+}
+
+@Composable
+private fun AppearanceContent(
+    themeMode: ThemeMode,
+    dynamicColor: Boolean,
+    onThemeMode: (ThemeMode) -> Unit,
+    onDynamicColor: (Boolean) -> Unit,
+) {
+    Column(
+        modifier = Modifier.padding(vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.ds_theme),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+        ) {
+            ThemeMode.entries.forEachIndexed { index, mode ->
+                SegmentedButton(
+                    selected = themeMode == mode,
+                    onClick = { onThemeMode(mode) },
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = ThemeMode.entries.size,
+                    ),
+                    label = { Text(mode.label()) },
+                )
+            }
+        }
+        SettingsRow(
+            icon = Icons.Outlined.ColorLens,
+            title = stringResource(R.string.ds_dynamic_color),
+            trailing = {
+                Switch(
+                    checked = dynamicColor,
+                    onCheckedChange = onDynamicColor,
+                )
+            },
+        )
+    }
+}
+
+@Composable
+private fun SettingsRow(
+    icon: ImageVector,
+    title: String,
+    supporting: String? = null,
+    onClick: (() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    val clickModifier = if (onClick != null) {
+        Modifier.clickable(onClick = onClick)
+    } else {
+        Modifier
+    }
+    Row(
+        modifier = Modifier
+                .fillMaxWidth()
+                .then(clickModifier)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(DaymarkSpacing.md),
+    ) {
+        Box(
+            modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            if (supporting != null) {
+                Text(
+                    text = supporting,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        trailing?.invoke()
+    }
 }
 
 @Composable
@@ -335,20 +448,22 @@ private fun <T> ChoiceDialog(
 }
 
 @Composable
-private fun ThemeMode.label(): String = stringResource(
-    when (this) {
-        ThemeMode.SYSTEM -> R.string.ds_theme_system
-        ThemeMode.LIGHT -> R.string.ds_theme_light
-        ThemeMode.DARK -> R.string.ds_theme_dark
-    },
-)
+private fun ThemeMode.label(): String =
+    stringResource(
+        when (this) {
+            ThemeMode.SYSTEM -> R.string.ds_theme_system
+            ThemeMode.LIGHT -> R.string.ds_theme_light
+            ThemeMode.DARK -> R.string.ds_theme_dark
+        },
+    )
 
 @Composable
-private fun WidgetStyle.label(): String = stringResource(
-    when (this) {
-        WidgetStyle.LUCENT -> R.string.ds_style_lucent
-        WidgetStyle.FROSTED -> R.string.ds_style_frosted
-        WidgetStyle.SOLID -> R.string.ds_style_solid
-        WidgetStyle.MATERIAL -> R.string.ds_style_material
-    },
-)
+private fun WidgetStyle.label(): String =
+    stringResource(
+        when (this) {
+            WidgetStyle.LUCENT -> R.string.ds_style_lucent
+            WidgetStyle.FROSTED -> R.string.ds_style_frosted
+            WidgetStyle.SOLID -> R.string.ds_style_solid
+            WidgetStyle.MATERIAL -> R.string.ds_style_material
+        },
+    )

@@ -1,28 +1,29 @@
 package top.chiloven.daymark.feature.home
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -32,9 +33,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import top.chiloven.daymark.core.designsystem.R
 import top.chiloven.daymark.core.designsystem.component.CategoryDot
 import top.chiloven.daymark.core.designsystem.component.CountdownCard
+import top.chiloven.daymark.core.designsystem.component.DaymarkBackground
+import top.chiloven.daymark.core.designsystem.component.DaymarkSectionHeader
+import top.chiloven.daymark.core.designsystem.component.DaymarkSurfaceCard
 import top.chiloven.daymark.core.designsystem.component.DaysBadge
 import top.chiloven.daymark.core.designsystem.component.EmptyState
-import top.chiloven.daymark.core.designsystem.component.SectionHeader
+import top.chiloven.daymark.core.designsystem.theme.DaymarkSpacing
 import top.chiloven.daymark.core.designsystem.util.displayName
 import top.chiloven.daymark.core.designsystem.util.formatMediumDate
 import top.chiloven.daymark.core.model.DefaultCategories
@@ -50,117 +54,113 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    HomeContent(
-        state = state,
-        onOpenEvent = onOpenEvent,
-        onNewEvent = onNewEvent,
-        onSeeAll = onSeeAll,
-        modifier = modifier,
-    )
-}
-
-@Composable
-private fun HomeContent(
-    state: HomeUiState,
-    onOpenEvent: (Long) -> Unit,
-    onNewEvent: () -> Unit,
-    onSeeAll: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
+    DaymarkBackground(modifier) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            floatingActionButton = {
+                ExtendedFloatingActionButton(
+                    onClick = onNewEvent,
+                    modifier = Modifier.padding(20.dp),
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text(stringResource(R.string.ds_new_event)) },
+                )
+            },
+        ) { innerPadding ->
+            LazyColumn(
+                modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .padding(innerPadding)
+                        .padding(horizontal = DaymarkSpacing.xl),
+                contentPadding = PaddingValues(top = DaymarkSpacing.lg, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(DaymarkSpacing.lg),
+            ) {
+                item(key = "header") {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = stringResource(R.string.ds_your_days),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
                         Text(
                             text = state.today.formatMediumDate(),
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.headlineLarge,
                         )
                     }
-                },
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onNewEvent,
-                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text(stringResource(R.string.ds_new_event)) },
-            )
-        },
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            val nextEvent = state.nextEvent
-            if (nextEvent != null) {
-                item(key = "next") {
-                    CountdownCard(
-                        occurrence = nextEvent,
-                        unitLabel = countdownLabel(nextEvent),
-                        onClick = { onOpenEvent(nextEvent.event.id) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                 }
-            }
 
-            if (state.todayEvents.isNotEmpty()) {
-                item(key = "today-header") {
-                    SectionHeader(stringResource(R.string.ds_today))
-                }
-                items(state.todayEvents, key = { "today-${it.event.id}" }) { occurrence ->
-                    EventRow(
-                        occurrence = occurrence,
-                        onClick = { onOpenEvent(occurrence.event.id) },
-                    )
-                }
-            }
-
-            if (state.upcoming.isNotEmpty()) {
-                item(key = "upcoming-header") {
-                    SectionHeader(
-                        title = stringResource(R.string.ds_upcoming),
-                        action = {
-                            TextButton(onClick = onSeeAll) {
-                                Text(stringResource(R.string.ds_see_all))
-                            }
-                        },
-                    )
-                }
-                items(state.upcoming, key = { "upcoming-${it.event.id}" }) { occurrence ->
-                    EventRow(
-                        occurrence = occurrence,
-                        onClick = { onOpenEvent(occurrence.event.id) },
-                    )
-                }
-            }
-
-            if (!state.isLoading && !state.hasAnyEvents) {
-                item(key = "empty") {
-                    EmptyState(
-                        title = stringResource(R.string.ds_empty_home_title),
-                        message = stringResource(R.string.ds_empty_home_message),
-                    )
-                    Button(
-                        onClick = onNewEvent,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(R.string.ds_new_event))
+                state.nextEvent?.let { next ->
+                    item(key = "hero") {
+                        CountdownCard(
+                            occurrence = next,
+                            unitLabel = countdownLabel(next),
+                            onClick = { onOpenEvent(next.event.id) },
+                        )
                     }
                 }
-            }
 
-            if (!state.isLoading && state.hasAnyEvents && state.nextEvent == null && state.todayEvents.isEmpty()) {
-                item(key = "nothing-today") {
-                    Text(
-                        text = stringResource(R.string.ds_no_events_today),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                if (state.todayEvents.isNotEmpty()) {
+                    item(key = "today-header") {
+                        DaymarkSectionHeader(
+                            title = stringResource(R.string.ds_today),
+                            count = state.todayEvents.size,
+                        )
+                    }
+                    items(state.todayEvents, key = { "today-${it.event.id}" }) { occurrence ->
+                        TodayEventCard(
+                            occurrence = occurrence,
+                            onClick = { onOpenEvent(occurrence.event.id) },
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
+                }
+
+                if (state.upcoming.isNotEmpty()) {
+                    item(key = "upcoming-header") {
+                        DaymarkSectionHeader(
+                            title = stringResource(R.string.ds_upcoming),
+                            count = state.upcoming.size,
+                            action = {
+                                TextButton(onClick = onSeeAll) {
+                                    Text(stringResource(R.string.ds_see_all))
+                                }
+                            },
+                        )
+                    }
+                    items(state.upcoming, key = { "upcoming-${it.event.id}" }) { occurrence ->
+                        UpcomingEventCard(
+                            occurrence = occurrence,
+                            onClick = { onOpenEvent(occurrence.event.id) },
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
+                }
+
+                if (!state.isLoading && !state.hasAnyEvents) {
+                    item(key = "empty") {
+                        EmptyState(
+                            title = stringResource(R.string.ds_empty_home_title),
+                            message = stringResource(R.string.ds_empty_home_message),
+                            actionLabel = stringResource(R.string.ds_new_event),
+                            onAction = onNewEvent,
+                        )
+                    }
+                }
+
+                if (!state.isLoading && state.hasAnyEvents && state.nextEvent == null &&
+                    state.todayEvents.isEmpty()
+                ) {
+                    item(key = "nothing-today") {
+                        DaymarkSurfaceCard {
+                            Text(
+                                text = stringResource(R.string.ds_no_events_today),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -168,45 +168,97 @@ private fun HomeContent(
 }
 
 @Composable
-private fun countdownLabel(occurrence: EventOccurrence): String {
-    return when {
+private fun TodayEventCard(
+    occurrence: EventOccurrence,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val category = DefaultCategories.byId(occurrence.event.categoryId)
+    DaymarkSurfaceCard(
+        modifier = modifier.fillMaxWidth(),
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(DaymarkSpacing.md),
+        ) {
+            CategoryDot(
+                color = category?.let { Color(it.colorArgb.toInt()) }
+                    ?: MaterialTheme.colorScheme.primary,
+            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = occurrence.event.title,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                val categoryName = category?.displayName()
+                Text(
+                    text = if (categoryName != null) {
+                        "$categoryName · ${occurrence.targetDate.formatMediumDate()}"
+                    } else {
+                        occurrence.targetDate.formatMediumDate()
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DaysBadge(text = stringResource(R.string.ds_today))
+        }
+    }
+}
+
+@Composable
+private fun UpcomingEventCard(
+    occurrence: EventOccurrence,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val category = DefaultCategories.byId(occurrence.event.categoryId)
+    DaymarkSurfaceCard(
+        modifier = modifier.fillMaxWidth(),
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(DaymarkSpacing.md),
+        ) {
+            CategoryDot(
+                color = category?.let { Color(it.colorArgb.toInt()) }
+                    ?: MaterialTheme.colorScheme.primary,
+            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = occurrence.event.title,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = occurrence.targetDate.formatMediumDate(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DaysBadge(
+                text = if (occurrence.days == 1L) {
+                    "1"
+                } else {
+                    occurrence.days.toString()
+                },
+            )
+            Spacer(Modifier.width(4.dp))
+        }
+    }
+}
+
+@Composable
+private fun countdownLabel(occurrence: EventOccurrence): String =
+    when {
         occurrence.phase == EventPhase.TODAY -> stringResource(R.string.ds_today)
         occurrence.isCountUp -> stringResource(R.string.ds_days_passed)
         occurrence.days == 1L -> stringResource(R.string.ds_day_left)
         else -> stringResource(R.string.ds_days_left)
     }
-}
-
-@Composable
-private fun EventRow(
-    occurrence: EventOccurrence,
-    onClick: () -> Unit,
-) {
-    val category = DefaultCategories.byId(occurrence.event.categoryId)
-    ListItem(
-        supportingContent = {
-            val categoryName = category?.displayName()
-            val date = occurrence.targetDate.formatMediumDate()
-            Text(if (categoryName != null) "$date · $categoryName" else date)
-        },
-        leadingContent = category?.let {
-            { CategoryDot(color = Color(it.colorArgb.toInt())) }
-        },
-        trailingContent = {
-            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                DaysBadge(
-                    text = when {
-                        occurrence.phase == EventPhase.TODAY -> stringResource(R.string.ds_today)
-                        occurrence.isCountUp -> "${-occurrence.days}"
-                        else -> "${occurrence.days}"
-                    },
-                )
-            }
-        },
-        modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick),
-    ) {
-        Text(occurrence.event.title)
-    }
-}

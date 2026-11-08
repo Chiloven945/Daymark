@@ -1,18 +1,25 @@
 package top.chiloven.daymark.feature.editor.editor
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -22,7 +29,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -47,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -54,6 +61,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import top.chiloven.daymark.core.designsystem.R
 import top.chiloven.daymark.core.designsystem.component.CountdownCard
+import top.chiloven.daymark.core.designsystem.component.DaymarkBackground
+import top.chiloven.daymark.core.designsystem.component.DaymarkSurfaceCard
+import top.chiloven.daymark.core.designsystem.theme.DaymarkSpacing
 import top.chiloven.daymark.core.designsystem.util.displayName
 import top.chiloven.daymark.core.designsystem.util.formatMediumDate
 import top.chiloven.daymark.core.model.CountDirection
@@ -92,195 +102,215 @@ fun EventEditorScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        stringResource(
-                            if (state.isEditing) R.string.ds_edit else R.string.ds_new_event,
-                        ),
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.Filled.Close, contentDescription = null)
-                    }
-                },
-                actions = {
-                    TextButton(
-                        onClick = viewModel::save,
-                        enabled = !state.isSaving,
-                    ) {
-                        Text(stringResource(R.string.ds_save))
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
-        if (state.isLoading) {
-            Column(
+    DaymarkBackground(modifier) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            stringResource(
+                                if (state.isEditing) R.string.ds_edit else R.string.ds_new_event,
+                            ),
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onClose) {
+                            Icon(Icons.Filled.Close, contentDescription = null)
+                        }
+                    },
+                    actions = {
+                        TextButton(
+                            onClick = viewModel::save,
+                            enabled = !state.isSaving,
+                        ) {
+                            Text(stringResource(R.string.ds_save))
+                        }
+                    },
+                )
+            },
+        ) { innerPadding ->
+            if (state.isLoading) {
+                Column(
+                    modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+                return@Scaffold
+            }
+
+            LazyColumn(
                 modifier = Modifier
                         .fillMaxSize()
-                        .padding(innerPadding),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+                        .padding(innerPadding)
+                        .navigationBarsPadding()
+                        .imePadding()
+                        .padding(horizontal = DaymarkSpacing.xl),
+                contentPadding = PaddingValues(top = DaymarkSpacing.sm, bottom = 40.dp),
+                verticalArrangement = Arrangement.spacedBy(DaymarkSpacing.xl),
             ) {
-                CircularProgressIndicator()
-            }
-            return@Scaffold
-        }
-
-        LazyColumn(
-            modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            state.preview?.let { preview ->
-                item {
-                    CountdownCard(
-                        occurrence = preview,
-                        unitLabel = previewUnit(preview),
-                    )
-                }
-            }
-
-            item {
-                OutlinedTextField(
-                    value = state.draft.title,
-                    onValueChange = viewModel::updateTitle,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.ds_title)) },
-                    singleLine = true,
-                    isError = EditorField.TITLE in state.errors,
-                    supportingText = if (EditorField.TITLE in state.errors) {
-                        { Text(stringResource(R.string.ds_title_required)) }
-                    } else {
-                        null
-                    },
-                )
-            }
-
-            item {
-                ListItem(
-                    supportingContent = { Text(state.draft.date.formatMediumDate()) },
-                    modifier = Modifier.clickable { showDatePicker = true },
-                ) {
-                    Text(stringResource(R.string.ds_date))
-                }
-            }
-
-            item {
-                Text(
-                    text = stringResource(R.string.ds_direction),
-                    style = MaterialTheme.typography.titleSmall,
-                )
-            }
-            item {
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    CountDirection.entries.forEachIndexed { index, direction ->
-                        SegmentedButton(
-                            selected = state.draft.direction == direction,
-                            onClick = { viewModel.updateDirection(direction) },
-                            shape = SegmentedButtonDefaults.itemShape(
-                                index = index,
-                                count = CountDirection.entries.size,
-                            ),
-                            label = { Text(direction.label()) },
+                state.preview?.let { preview ->
+                    item(key = "preview") {
+                        CountdownCard(
+                            occurrence = preview,
+                            unitLabel = previewUnit(preview),
                         )
                     }
                 }
-            }
 
-            item {
-                ListItem(
-                    supportingContent = { Text(state.draft.recurrence.frequency.label()) },
-                    modifier = Modifier.clickable { showRepeatDialog = true },
-                ) {
-                    Text(stringResource(R.string.ds_repeat))
-                }
-            }
-
-            item {
-                Text(
-                    text = stringResource(R.string.ds_category),
-                    style = MaterialTheme.typography.titleSmall,
-                )
-            }
-            item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(DefaultCategories.all, key = { it.id }) { category ->
-                        FilterChip(
-                            selected = state.draft.categoryId == category.id,
-                            onClick = { viewModel.updateCategory(category.id) },
-                            label = { Text(category.displayName()) },
-                        )
-                    }
-                }
-            }
-
-            item {
-                ListItem(
-                    trailingContent = {
-                        Switch(
-                            checked = state.draft.reminderEnabled,
-                            onCheckedChange = viewModel::updateReminderEnabled,
-                        )
-                    },
-                ) {
-                    Text(stringResource(R.string.ds_reminder_enabled))
-                }
-            }
-
-            if (state.draft.reminderEnabled) {
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                item(key = "event-section") {
+                    FormSection(title = stringResource(R.string.ds_section_event)) {
                         OutlinedTextField(
-                            value = state.draft.reminderOffsetDays.toString(),
-                            onValueChange = { value ->
-                                value.toIntOrNull()?.let(viewModel::updateReminderOffset)
-                            },
-                            modifier = Modifier.weight(1f),
-                            label = { Text(stringResource(R.string.ds_reminder_offset)) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            value = state.draft.title,
+                            onValueChange = viewModel::updateTitle,
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.ds_title)) },
                             singleLine = true,
+                            shape = RoundedCornerShape(16.dp),
+                            isError = EditorField.TITLE in state.errors,
+                            supportingText = if (EditorField.TITLE in state.errors) {
+                                { Text(stringResource(R.string.ds_title_required)) }
+                            } else {
+                                null
+                            },
                         )
-                        TextButton(onClick = { showTimePicker = true }) {
-                            Text(
-                                "${stringResource(R.string.ds_reminder_time)} " +
-                                        state.draft.reminderTime.formatTime(),
-                            )
+                    }
+                }
+
+                item(key = "schedule-section") {
+                    FormSection(title = stringResource(R.string.ds_section_schedule)) {
+                        SettingRow(
+                            label = stringResource(R.string.ds_date),
+                            value = state.draft.date.formatMediumDate(),
+                            onClick = { showDatePicker = true },
+                        )
+                        Text(
+                            text = stringResource(R.string.ds_direction),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                        SingleChoiceSegmentedButtonRow(
+                            modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                        ) {
+                            CountDirection.entries.forEachIndexed { index, direction ->
+                                SegmentedButton(
+                                    selected = state.draft.direction == direction,
+                                    onClick = { viewModel.updateDirection(direction) },
+                                    shape = SegmentedButtonDefaults.itemShape(
+                                        index = index,
+                                        count = CountDirection.entries.size,
+                                    ),
+                                    label = { Text(direction.label()) },
+                                )
+                            }
+                        }
+                        SettingRow(
+                            label = stringResource(R.string.ds_repeat),
+                            value = state.draft.recurrence.frequency.label(),
+                            onClick = { showRepeatDialog = true },
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
+                }
+
+                item(key = "category-section") {
+                    FormSection(title = stringResource(R.string.ds_category)) {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(DaymarkSpacing.sm)) {
+                            items(DefaultCategories.all, key = { it.id }) { category ->
+                                FilterChip(
+                                    selected = state.draft.categoryId == category.id,
+                                    onClick = { viewModel.updateCategory(category.id) },
+                                    label = { Text(category.displayName()) },
+                                    shape = RoundedCornerShape(999.dp),
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            item {
-                OutlinedTextField(
-                    value = state.draft.note,
-                    onValueChange = viewModel::updateNote,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.ds_note)) },
-                    placeholder = { Text(stringResource(R.string.ds_note_hint)) },
-                    minLines = 3,
-                )
-            }
+                item(key = "reminder-section") {
+                    DaymarkSurfaceCard(
+                        modifier = Modifier
+                                .fillMaxWidth()
+                                .animateContentSize(),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.ds_reminder_enabled),
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Switch(
+                                checked = state.draft.reminderEnabled,
+                                onCheckedChange = viewModel::updateReminderEnabled,
+                            )
+                        }
+                        if (state.draft.reminderEnabled) {
+                            Row(
+                                modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = DaymarkSpacing.md),
+                                horizontalArrangement = Arrangement.spacedBy(DaymarkSpacing.md),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                OutlinedTextField(
+                                    value = state.draft.reminderOffsetDays.toString(),
+                                    onValueChange = { value ->
+                                        value.toIntOrNull()?.let(viewModel::updateReminderOffset)
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    label = { Text(stringResource(R.string.ds_reminder_offset)) },
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Number,
+                                    ),
+                                    shape = RoundedCornerShape(16.dp),
+                                    singleLine = true,
+                                )
+                                TextButton(onClick = { showTimePicker = true }) {
+                                    Text(
+                                        text = state.draft.reminderTime.formatTime(),
+                                        style = MaterialTheme.typography.titleMedium,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
 
-            if (state.isEditing) {
-                item {
-                    TextButton(onClick = { showDeleteDialog = true }) {
-                        Text(
-                            text = stringResource(R.string.ds_delete),
-                            color = MaterialTheme.colorScheme.error,
+                item(key = "note-section") {
+                    FormSection(title = stringResource(R.string.ds_note)) {
+                        OutlinedTextField(
+                            value = state.draft.note,
+                            onValueChange = viewModel::updateNote,
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text(stringResource(R.string.ds_note_hint)) },
+                            shape = RoundedCornerShape(16.dp),
+                            minLines = 3,
                         )
+                    }
+                }
+
+                if (state.isEditing) {
+                    item(key = "delete") {
+                        TextButton(onClick = { showDeleteDialog = true }) {
+                            Text(
+                                text = stringResource(R.string.ds_delete),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
                     }
                 }
             }
@@ -359,6 +389,36 @@ fun EventEditorScreen(
         )
     }
 
+    if (showTimePicker) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = state.draft.reminderTime.hour,
+            initialMinute = state.draft.reminderTime.minute,
+            is24Hour = true,
+        )
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text(stringResource(R.string.ds_reminder_time)) },
+            text = { TimePicker(state = timePickerState) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.updateReminderTime(
+                            LocalTime.of(timePickerState.hour, timePickerState.minute),
+                        )
+                        showTimePicker = false
+                    },
+                ) {
+                    Text(stringResource(R.string.ds_save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) {
+                    Text(stringResource(R.string.ds_cancel))
+                }
+            },
+        )
+    }
+
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -381,66 +441,90 @@ fun EventEditorScreen(
             },
         )
     }
+}
 
-    if (showTimePicker) {
-        val timePickerState = rememberTimePickerState(
-            initialHour = state.draft.reminderTime.hour,
-            initialMinute = state.draft.reminderTime.minute,
-            is24Hour = true,
+@Composable
+private fun FormSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(DaymarkSpacing.sm)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp),
         )
-        AlertDialog(
-            onDismissRequest = { showTimePicker = false },
-            title = { Text(stringResource(R.string.ds_reminder_time)) },
-            text = {
-                TimePicker(state = timePickerState)
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.updateReminderTime(
-                            LocalTime.of(timePickerState.hour, timePickerState.minute),
-                        )
-                        showTimePicker = false
-                    },
-                ) {
-                    Text(stringResource(R.string.ds_save))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showTimePicker = false }) {
-                    Text(stringResource(R.string.ds_cancel))
-                }
-            },
+        DaymarkSurfaceCard(
+            modifier = Modifier.fillMaxWidth(),
+            content = content,
         )
     }
 }
 
 @Composable
-private fun previewUnit(occurrence: EventOccurrence): String = when {
-    occurrence.phase == EventPhase.TODAY -> stringResource(R.string.ds_today)
-    occurrence.isCountUp -> stringResource(R.string.ds_days_passed)
-    occurrence.days == 1L -> stringResource(R.string.ds_day_left)
-    else -> stringResource(R.string.ds_days_left)
+private fun SettingRow(
+    label: String,
+    value: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = onClick)
+                .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 @Composable
-private fun CountDirection.label(): String = stringResource(
-    when (this) {
-        CountDirection.COUNT_DOWN -> R.string.ds_countdown
-        CountDirection.COUNT_UP -> R.string.ds_count_up
-        CountDirection.AUTO -> R.string.ds_auto
-    },
-)
+private fun previewUnit(occurrence: EventOccurrence): String =
+    when {
+        occurrence.phase == EventPhase.TODAY -> stringResource(R.string.ds_today)
+        occurrence.isCountUp -> stringResource(R.string.ds_days_passed)
+        occurrence.days == 1L -> stringResource(R.string.ds_day_left)
+        else -> stringResource(R.string.ds_days_left)
+    }
 
 @Composable
-private fun RecurrenceFrequency.label(): String = stringResource(
-    when (this) {
-        RecurrenceFrequency.NONE -> R.string.ds_never
-        RecurrenceFrequency.WEEKLY -> R.string.ds_weekly
-        RecurrenceFrequency.MONTHLY -> R.string.ds_monthly
-        RecurrenceFrequency.YEARLY -> R.string.ds_yearly
-    },
-)
+private fun CountDirection.label(): String =
+    stringResource(
+        when (this) {
+            CountDirection.COUNT_DOWN -> R.string.ds_countdown
+            CountDirection.COUNT_UP -> R.string.ds_count_up
+            CountDirection.AUTO -> R.string.ds_auto
+        },
+    )
+
+@Composable
+private fun RecurrenceFrequency.label(): String =
+    stringResource(
+        when (this) {
+            RecurrenceFrequency.NONE -> R.string.ds_never
+            RecurrenceFrequency.WEEKLY -> R.string.ds_weekly
+            RecurrenceFrequency.MONTHLY -> R.string.ds_monthly
+            RecurrenceFrequency.YEARLY -> R.string.ds_yearly
+        },
+    )
 
 private fun LocalTime.formatTime(): String =
     "%02d:%02d".format(hour, minute)
