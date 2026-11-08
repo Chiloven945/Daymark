@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Daymark</string>
+    <string name="tab_home">主页</string>
+    <string name="tab_events">事件</string>
+    <string name="tab_calendar">日历</string>
+    <string name="tab_settings">设置</string>
+</resources>
